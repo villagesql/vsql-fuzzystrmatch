@@ -1,0 +1,17 @@
+INSTALL EXTENSION vsql_fuzzystrmatch;
+# metaphone basic
+SELECT vsql_fuzzystrmatch.metaphone('Robert', 10);
+vsql_fuzzystrmatch.metaphone('Robert', 10)
+RBRT
+SELECT vsql_fuzzystrmatch.metaphone('Thompson', 10);
+vsql_fuzzystrmatch.metaphone('Thompson', 10)
+0MPSN
+# metaphone truncation
+SELECT vsql_fuzzystrmatch.metaphone('Robert', 2);
+vsql_fuzzystrmatch.metaphone('Robert', 2)
+RB
+# metaphone NULL
+SELECT vsql_fuzzystrmatch.metaphone(NULL, 10);
+vsql_fuzzystrmatch.metaphone(NULL, 10)
+NULL
+UNINSTALL EXTENSION vsql_fuzzystrmatch;

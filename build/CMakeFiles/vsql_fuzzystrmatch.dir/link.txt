@@ -1,0 +1,1 @@
+/usr/bin/c++  -arch arm64 -dynamiclib -Wl,-headerpad_max_install_names -o vsql_fuzzystrmatch_veb_staging/lib/vsql_fuzzystrmatch.so -install_name @rpath/vsql_fuzzystrmatch.so CMakeFiles/vsql_fuzzystrmatch.dir/src/vsql_fuzzystrmatch.cc.o

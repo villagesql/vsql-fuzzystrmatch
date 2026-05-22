@@ -1,0 +1,27 @@
+INSTALL EXTENSION vsql_fuzzystrmatch;
+
+--echo # levenshtein basic
+SELECT vsql_fuzzystrmatch.levenshtein('kitten', 'sitting');
+SELECT vsql_fuzzystrmatch.levenshtein('', 'abc');
+SELECT vsql_fuzzystrmatch.levenshtein('abc', '');
+SELECT vsql_fuzzystrmatch.levenshtein('abc', 'abc');
+
+--echo # levenshtein NULL
+SELECT vsql_fuzzystrmatch.levenshtein(NULL, 'abc');
+
+--echo # levenshtein_cost
+SELECT vsql_fuzzystrmatch.levenshtein_cost('kitten', 'sitting', 1, 1, 1);
+SELECT vsql_fuzzystrmatch.levenshtein_cost('abc', 'xyz', 1, 1, 10);
+
+--echo # levenshtein_less_equal
+SELECT vsql_fuzzystrmatch.levenshtein_less_equal('kitten', 'sitting', 5);
+SELECT vsql_fuzzystrmatch.levenshtein_less_equal('kitten', 'sitting', 2);
+
+--echo # levenshtein_less_equal_cost
+SELECT vsql_fuzzystrmatch.levenshtein_less_equal_cost('abc', 'xyz', 1, 1, 1, 5);
+SELECT vsql_fuzzystrmatch.levenshtein_less_equal_cost('abc', 'xyz', 1, 1, 1, 2);
+
+--echo # negative cost returns NULL with warning
+SELECT vsql_fuzzystrmatch.levenshtein_cost('abc', 'xyz', -1, 1, 1);
+
+UNINSTALL EXTENSION vsql_fuzzystrmatch;

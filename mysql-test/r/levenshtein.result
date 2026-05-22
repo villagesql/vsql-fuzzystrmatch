@@ -1,0 +1,46 @@
+INSTALL EXTENSION vsql_fuzzystrmatch;
+# levenshtein basic
+SELECT vsql_fuzzystrmatch.levenshtein('kitten', 'sitting');
+vsql_fuzzystrmatch.levenshtein('kitten', 'sitting')
+3
+SELECT vsql_fuzzystrmatch.levenshtein('', 'abc');
+vsql_fuzzystrmatch.levenshtein('', 'abc')
+3
+SELECT vsql_fuzzystrmatch.levenshtein('abc', '');
+vsql_fuzzystrmatch.levenshtein('abc', '')
+3
+SELECT vsql_fuzzystrmatch.levenshtein('abc', 'abc');
+vsql_fuzzystrmatch.levenshtein('abc', 'abc')
+0
+# levenshtein NULL
+SELECT vsql_fuzzystrmatch.levenshtein(NULL, 'abc');
+vsql_fuzzystrmatch.levenshtein(NULL, 'abc')
+NULL
+# levenshtein_cost
+SELECT vsql_fuzzystrmatch.levenshtein_cost('kitten', 'sitting', 1, 1, 1);
+vsql_fuzzystrmatch.levenshtein_cost('kitten', 'sitting', 1, 1, 1)
+3
+SELECT vsql_fuzzystrmatch.levenshtein_cost('abc', 'xyz', 1, 1, 10);
+vsql_fuzzystrmatch.levenshtein_cost('abc', 'xyz', 1, 1, 10)
+6
+# levenshtein_less_equal
+SELECT vsql_fuzzystrmatch.levenshtein_less_equal('kitten', 'sitting', 5);
+vsql_fuzzystrmatch.levenshtein_less_equal('kitten', 'sitting', 5)
+3
+SELECT vsql_fuzzystrmatch.levenshtein_less_equal('kitten', 'sitting', 2);
+vsql_fuzzystrmatch.levenshtein_less_equal('kitten', 'sitting', 2)
+3
+# levenshtein_less_equal_cost
+SELECT vsql_fuzzystrmatch.levenshtein_less_equal_cost('abc', 'xyz', 1, 1, 1, 5);
+vsql_fuzzystrmatch.levenshtein_less_equal_cost('abc', 'xyz', 1, 1, 1, 5)
+3
+SELECT vsql_fuzzystrmatch.levenshtein_less_equal_cost('abc', 'xyz', 1, 1, 1, 2);
+vsql_fuzzystrmatch.levenshtein_less_equal_cost('abc', 'xyz', 1, 1, 1, 2)
+3
+# negative cost returns NULL with warning
+SELECT vsql_fuzzystrmatch.levenshtein_cost('abc', 'xyz', -1, 1, 1);
+vsql_fuzzystrmatch.levenshtein_cost('abc', 'xyz', -1, 1, 1)
+NULL
+Warnings:
+Warning	3200	VDF error in function 'levenshtein_cost': levenshtein_cost: costs must be non-negative
+UNINSTALL EXTENSION vsql_fuzzystrmatch;

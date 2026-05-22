@@ -1,0 +1,15 @@
+INSTALL EXTENSION vsql_fuzzystrmatch;
+
+--echo # dmetaphone primary
+SELECT vsql_fuzzystrmatch.dmetaphone('Robert');
+SELECT vsql_fuzzystrmatch.dmetaphone('Schmidt');
+
+--echo # dmetaphone_alt
+SELECT vsql_fuzzystrmatch.dmetaphone_alt('Robert');
+SELECT vsql_fuzzystrmatch.dmetaphone_alt('Schmidt');
+
+--echo # NULL
+SELECT vsql_fuzzystrmatch.dmetaphone(NULL);
+SELECT vsql_fuzzystrmatch.dmetaphone_alt(NULL);
+
+UNINSTALL EXTENSION vsql_fuzzystrmatch;

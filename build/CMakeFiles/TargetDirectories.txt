@@ -1,0 +1,9 @@
+/Users/villageadam/Documents/GitHub/villagesql-samples/vsql_fuzzystrmatch/build/CMakeFiles/vsql_fuzzystrmatch.dir
+/Users/villageadam/Documents/GitHub/villagesql-samples/vsql_fuzzystrmatch/build/CMakeFiles/veb.dir
+/Users/villageadam/Documents/GitHub/villagesql-samples/vsql_fuzzystrmatch/build/CMakeFiles/show_veb.dir
+/Users/villageadam/Documents/GitHub/villagesql-samples/vsql_fuzzystrmatch/build/CMakeFiles/edit_cache.dir
+/Users/villageadam/Documents/GitHub/villagesql-samples/vsql_fuzzystrmatch/build/CMakeFiles/rebuild_cache.dir
+/Users/villageadam/Documents/GitHub/villagesql-samples/vsql_fuzzystrmatch/build/CMakeFiles/list_install_components.dir
+/Users/villageadam/Documents/GitHub/villagesql-samples/vsql_fuzzystrmatch/build/CMakeFiles/install.dir
+/Users/villageadam/Documents/GitHub/villagesql-samples/vsql_fuzzystrmatch/build/CMakeFiles/install/local.dir
+/Users/villageadam/Documents/GitHub/villagesql-samples/vsql_fuzzystrmatch/build/CMakeFiles/install/strip.dir

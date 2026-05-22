@@ -1,0 +1,44 @@
+INSTALL EXTENSION vsql_fuzzystrmatch;
+# Basic soundex codes
+SELECT vsql_fuzzystrmatch.soundex('Robert');
+vsql_fuzzystrmatch.soundex('Robert')
+R163
+SELECT vsql_fuzzystrmatch.soundex('Rupert');
+vsql_fuzzystrmatch.soundex('Rupert')
+R163
+SELECT vsql_fuzzystrmatch.soundex('Anne');
+vsql_fuzzystrmatch.soundex('Anne')
+A500
+SELECT vsql_fuzzystrmatch.soundex('Ann');
+vsql_fuzzystrmatch.soundex('Ann')
+A500
+# Empty input
+SELECT vsql_fuzzystrmatch.soundex('');
+vsql_fuzzystrmatch.soundex('')
+
+# NULL input
+SELECT vsql_fuzzystrmatch.soundex(NULL);
+vsql_fuzzystrmatch.soundex(NULL)
+NULL
+# Case insensitivity
+SELECT vsql_fuzzystrmatch.soundex('robert');
+vsql_fuzzystrmatch.soundex('robert')
+R163
+SELECT vsql_fuzzystrmatch.soundex('ROBERT');
+vsql_fuzzystrmatch.soundex('ROBERT')
+R163
+# difference
+SELECT vsql_fuzzystrmatch.difference('Robert', 'Rupert');
+vsql_fuzzystrmatch.difference('Robert', 'Rupert')
+4
+SELECT vsql_fuzzystrmatch.difference('Anne', 'Ann');
+vsql_fuzzystrmatch.difference('Anne', 'Ann')
+4
+SELECT vsql_fuzzystrmatch.difference('Robert', 'Sylvia');
+vsql_fuzzystrmatch.difference('Robert', 'Sylvia')
+0
+# difference NULL
+SELECT vsql_fuzzystrmatch.difference(NULL, 'Ann');
+vsql_fuzzystrmatch.difference(NULL, 'Ann')
+NULL
+UNINSTALL EXTENSION vsql_fuzzystrmatch;

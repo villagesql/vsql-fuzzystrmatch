@@ -1,0 +1,27 @@
+INSTALL EXTENSION vsql_fuzzystrmatch;
+
+--echo # Basic soundex codes
+SELECT vsql_fuzzystrmatch.soundex('Robert');
+SELECT vsql_fuzzystrmatch.soundex('Rupert');
+SELECT vsql_fuzzystrmatch.soundex('Anne');
+SELECT vsql_fuzzystrmatch.soundex('Ann');
+
+--echo # Empty input
+SELECT vsql_fuzzystrmatch.soundex('');
+
+--echo # NULL input
+SELECT vsql_fuzzystrmatch.soundex(NULL);
+
+--echo # Case insensitivity
+SELECT vsql_fuzzystrmatch.soundex('robert');
+SELECT vsql_fuzzystrmatch.soundex('ROBERT');
+
+--echo # difference
+SELECT vsql_fuzzystrmatch.difference('Robert', 'Rupert');
+SELECT vsql_fuzzystrmatch.difference('Anne', 'Ann');
+SELECT vsql_fuzzystrmatch.difference('Robert', 'Sylvia');
+
+--echo # difference NULL
+SELECT vsql_fuzzystrmatch.difference(NULL, 'Ann');
+
+UNINSTALL EXTENSION vsql_fuzzystrmatch;
