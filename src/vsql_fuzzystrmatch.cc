@@ -14,7 +14,7 @@
  * along with this program; if not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <villagesql/extension.h>
+#include <villagesql/vsql.h>
 
 #include <algorithm>
 #include <cctype>
@@ -23,8 +23,7 @@
 #include <string>
 #include <string_view>
 
-using namespace villagesql::extension_builder;
-using namespace villagesql::func_builder;
+using namespace vsql;
 
 // =============================================================================
 // Soundex helpers
@@ -89,25 +88,16 @@ static std::string compute_soundex(std::string_view input) {
 // Soundex
 // =============================================================================
 
-void soundex_impl(vef_context_t *ctx, vef_invalue_t *arg,
-                  vef_vdf_result_t *result) {
+void soundex_impl(StringArg arg, StringResult result) {
   try {
-    if (arg->is_null) {
-      result->type = VEF_RESULT_NULL;
-      return;
-    }
-    std::string s = compute_soundex({arg->str_value, arg->str_len});
-    if (s.size() > result->max_str_len) {
-      result->type = VEF_RESULT_ERROR;
-      snprintf(result->error_msg, VEF_MAX_ERROR_LEN, "soundex: buffer too small");
-      return;
-    }
-    std::memcpy(result->str_buf, s.data(), s.size());
-    result->actual_len = s.size();
-    result->type = VEF_RESULT_VALUE;
+    if (arg.is_null()) { result.set_null(); return; }
+    std::string s = compute_soundex(arg.value());
+    auto buf = result.buffer();
+    if (s.size() > buf.size()) { result.warning("soundex: buffer too small"); return; }
+    std::memcpy(buf.data(), s.data(), s.size());
+    result.set_length(s.size());
   } catch (...) {
-    result->type = VEF_RESULT_ERROR;
-    snprintf(result->error_msg, VEF_MAX_ERROR_LEN, "soundex: internal error");
+    result.warning("soundex: internal error");
   }
 }
 
@@ -115,27 +105,20 @@ void soundex_impl(vef_context_t *ctx, vef_invalue_t *arg,
 // difference
 // =============================================================================
 
-void difference_impl(vef_context_t *ctx, vef_invalue_t *a, vef_invalue_t *b,
-                     vef_vdf_result_t *result) {
+void difference_impl(StringArg a, StringArg b, IntResult result) {
   try {
-    if (a->is_null || b->is_null) {
-      result->type = VEF_RESULT_NULL;
-      return;
-    }
-    std::string sa = compute_soundex({a->str_value, a->str_len});
-    std::string sb = compute_soundex({b->str_value, b->str_len});
-    // Pad to length 4 for comparison (empty inputs yield "")
+    if (a.is_null() || b.is_null()) { result.set_null(); return; }
+    std::string sa = compute_soundex(a.value());
+    std::string sb = compute_soundex(b.value());
     while (sa.size() < 4) sa += '0';
     while (sb.size() < 4) sb += '0';
     long long score = 0;
     for (size_t i = 0; i < 4; ++i) {
       if (sa[i] == sb[i]) ++score;
     }
-    result->int_value = score;
-    result->type = VEF_RESULT_VALUE;
+    result.set(score);
   } catch (...) {
-    result->type = VEF_RESULT_ERROR;
-    snprintf(result->error_msg, VEF_MAX_ERROR_LEN, "difference: internal error");
+    result.warning("difference: internal error");
   }
 }
 
@@ -186,12 +169,12 @@ static long long levenshtein_dp(std::string_view src, std::string_view tgt,
 }
 
 static bool check_lev_len(std::string_view sa, std::string_view sb,
-                           const char *fn, vef_vdf_result_t *result) {
+                           const char *fn, IntResult &result) {
   if (sa.size() > kLevenshteinMaxLen || sb.size() > kLevenshteinMaxLen) {
-    result->type = VEF_RESULT_ERROR;
-    snprintf(result->error_msg, VEF_MAX_ERROR_LEN,
-             "%s: argument exceeds maximum length of %zu", fn,
-             kLevenshteinMaxLen);
+    char msg[256];
+    snprintf(msg, sizeof(msg), "%s: argument exceeds maximum length of %zu",
+             fn, kLevenshteinMaxLen);
+    result.warning(msg);
     return false;
   }
   return true;
@@ -201,21 +184,14 @@ static bool check_lev_len(std::string_view sa, std::string_view sb,
 // levenshtein (2-arg)
 // =============================================================================
 
-void levenshtein_impl(vef_context_t *ctx, vef_invalue_t *a, vef_invalue_t *b,
-                      vef_vdf_result_t *result) {
+void levenshtein_impl(StringArg a, StringArg b, IntResult result) {
   try {
-    if (a->is_null || b->is_null) {
-      result->type = VEF_RESULT_NULL;
-      return;
-    }
-    std::string_view sa{a->str_value, a->str_len};
-    std::string_view sb{b->str_value, b->str_len};
+    if (a.is_null() || b.is_null()) { result.set_null(); return; }
+    std::string_view sa = a.value(), sb = b.value();
     if (!check_lev_len(sa, sb, "levenshtein", result)) return;
-    result->int_value = levenshtein_dp(sa, sb, 1, 1, 1, -1);
-    result->type = VEF_RESULT_VALUE;
+    result.set(levenshtein_dp(sa, sb, 1, 1, 1, -1));
   } catch (...) {
-    result->type = VEF_RESULT_ERROR;
-    snprintf(result->error_msg, VEF_MAX_ERROR_LEN, "levenshtein: internal error");
+    result.warning("levenshtein: internal error");
   }
 }
 
@@ -223,38 +199,27 @@ void levenshtein_impl(vef_context_t *ctx, vef_invalue_t *a, vef_invalue_t *b,
 // levenshtein_cost (5-arg)
 // =============================================================================
 
-void levenshtein_cost_impl(vef_context_t *ctx, vef_invalue_t *a,
-                           vef_invalue_t *b, vef_invalue_t *ins,
-                           vef_invalue_t *del, vef_invalue_t *sub,
-                           vef_vdf_result_t *result) {
+void levenshtein_cost_impl(StringArg a, StringArg b, IntArg ins, IntArg del,
+                           IntArg sub, IntResult result) {
   try {
-    if (a->is_null || b->is_null || ins->is_null || del->is_null ||
-        sub->is_null) {
-      result->type = VEF_RESULT_NULL;
-      return;
-    }
-    long long ic = ins->int_value, dc = del->int_value, sc = sub->int_value;
+    if (a.is_null() || b.is_null() || ins.is_null() || del.is_null() ||
+        sub.is_null()) { result.set_null(); return; }
+    long long ic = ins.value(), dc = del.value(), sc = sub.value();
     if (ic < 0 || dc < 0 || sc < 0) {
-      result->type = VEF_RESULT_ERROR;
-      snprintf(result->error_msg, VEF_MAX_ERROR_LEN,
-               "levenshtein_cost: costs must be non-negative");
+      result.warning("levenshtein_cost: costs must be non-negative");
       return;
     }
     if (ic > INT_MAX || dc > INT_MAX || sc > INT_MAX) {
-      result->type = VEF_RESULT_ERROR;
-      snprintf(result->error_msg, VEF_MAX_ERROR_LEN,
-               "levenshtein_cost: costs must not exceed %d", INT_MAX);
+      char msg[128];
+      snprintf(msg, sizeof(msg), "levenshtein_cost: costs must not exceed %d", INT_MAX);
+      result.warning(msg);
       return;
     }
-    std::string_view sa{a->str_value, a->str_len};
-    std::string_view sb{b->str_value, b->str_len};
+    std::string_view sa = a.value(), sb = b.value();
     if (!check_lev_len(sa, sb, "levenshtein_cost", result)) return;
-    result->int_value = levenshtein_dp(sa, sb, ic, dc, sc, -1);
-    result->type = VEF_RESULT_VALUE;
+    result.set(levenshtein_dp(sa, sb, ic, dc, sc, -1));
   } catch (...) {
-    result->type = VEF_RESULT_ERROR;
-    snprintf(result->error_msg, VEF_MAX_ERROR_LEN,
-             "levenshtein_cost: internal error");
+    result.warning("levenshtein_cost: internal error");
   }
 }
 
@@ -262,31 +227,21 @@ void levenshtein_cost_impl(vef_context_t *ctx, vef_invalue_t *a,
 // levenshtein_less_equal (3-arg)
 // =============================================================================
 
-void levenshtein_less_equal_impl(vef_context_t *ctx, vef_invalue_t *a,
-                                 vef_invalue_t *b, vef_invalue_t *imax,
-                                 vef_vdf_result_t *result) {
+void levenshtein_less_equal_impl(StringArg a, StringArg b, IntArg imax,
+                                 IntResult result) {
   try {
-    if (a->is_null || b->is_null || imax->is_null) {
-      result->type = VEF_RESULT_NULL;
-      return;
-    }
-    long long max_d = imax->int_value;
+    if (a.is_null() || b.is_null() || imax.is_null()) { result.set_null(); return; }
+    long long max_d = imax.value();
     if (max_d < 0) {
-      result->type = VEF_RESULT_ERROR;
-      snprintf(result->error_msg, VEF_MAX_ERROR_LEN,
-               "levenshtein_less_equal: max_d must be non-negative");
+      result.warning("levenshtein_less_equal: max_d must be non-negative");
       return;
     }
-    std::string_view sa{a->str_value, a->str_len};
-    std::string_view sb{b->str_value, b->str_len};
+    std::string_view sa = a.value(), sb = b.value();
     if (!check_lev_len(sa, sb, "levenshtein_less_equal", result)) return;
     long long d = levenshtein_dp(sa, sb, 1, 1, 1, max_d);
-    result->int_value = (d < 0) ? (max_d < LLONG_MAX ? max_d + 1 : max_d) : d;
-    result->type = VEF_RESULT_VALUE;
+    result.set((d < 0) ? (max_d < LLONG_MAX ? max_d + 1 : max_d) : d);
   } catch (...) {
-    result->type = VEF_RESULT_ERROR;
-    snprintf(result->error_msg, VEF_MAX_ERROR_LEN,
-             "levenshtein_less_equal: internal error");
+    result.warning("levenshtein_less_equal: internal error");
   }
 }
 
@@ -294,47 +249,35 @@ void levenshtein_less_equal_impl(vef_context_t *ctx, vef_invalue_t *a,
 // levenshtein_less_equal_cost (6-arg)
 // =============================================================================
 
-void levenshtein_less_equal_cost_impl(vef_context_t *ctx, vef_invalue_t *a,
-                                      vef_invalue_t *b, vef_invalue_t *ins,
-                                      vef_invalue_t *del, vef_invalue_t *sub,
-                                      vef_invalue_t *imax,
-                                      vef_vdf_result_t *result) {
+void levenshtein_less_equal_cost_impl(StringArg a, StringArg b, IntArg ins,
+                                      IntArg del, IntArg sub, IntArg imax,
+                                      IntResult result) {
   try {
-    if (a->is_null || b->is_null || ins->is_null || del->is_null ||
-        sub->is_null || imax->is_null) {
-      result->type = VEF_RESULT_NULL;
-      return;
-    }
-    long long ic = ins->int_value, dc = del->int_value, sc = sub->int_value;
-    long long max_d = imax->int_value;
+    if (a.is_null() || b.is_null() || ins.is_null() || del.is_null() ||
+        sub.is_null() || imax.is_null()) { result.set_null(); return; }
+    long long ic = ins.value(), dc = del.value(), sc = sub.value();
+    long long max_d = imax.value();
     if (ic < 0 || dc < 0 || sc < 0) {
-      result->type = VEF_RESULT_ERROR;
-      snprintf(result->error_msg, VEF_MAX_ERROR_LEN,
-               "levenshtein_less_equal_cost: costs must be non-negative");
+      result.warning("levenshtein_less_equal_cost: costs must be non-negative");
       return;
     }
     if (ic > INT_MAX || dc > INT_MAX || sc > INT_MAX) {
-      result->type = VEF_RESULT_ERROR;
-      snprintf(result->error_msg, VEF_MAX_ERROR_LEN,
+      char msg[128];
+      snprintf(msg, sizeof(msg),
                "levenshtein_less_equal_cost: costs must not exceed %d", INT_MAX);
+      result.warning(msg);
       return;
     }
     if (max_d < 0) {
-      result->type = VEF_RESULT_ERROR;
-      snprintf(result->error_msg, VEF_MAX_ERROR_LEN,
-               "levenshtein_less_equal_cost: max_d must be non-negative");
+      result.warning("levenshtein_less_equal_cost: max_d must be non-negative");
       return;
     }
-    std::string_view sa{a->str_value, a->str_len};
-    std::string_view sb{b->str_value, b->str_len};
+    std::string_view sa = a.value(), sb = b.value();
     if (!check_lev_len(sa, sb, "levenshtein_less_equal_cost", result)) return;
     long long d = levenshtein_dp(sa, sb, ic, dc, sc, max_d);
-    result->int_value = (d < 0) ? (max_d < LLONG_MAX ? max_d + 1 : max_d) : d;
-    result->type = VEF_RESULT_VALUE;
+    result.set((d < 0) ? (max_d < LLONG_MAX ? max_d + 1 : max_d) : d);
   } catch (...) {
-    result->type = VEF_RESULT_ERROR;
-    snprintf(result->error_msg, VEF_MAX_ERROR_LEN,
-             "levenshtein_less_equal_cost: internal error");
+    result.warning("levenshtein_less_equal_cost: internal error");
   }
 }
 
@@ -502,40 +445,24 @@ static std::string compute_metaphone(std::string_view input, int max_out) {
   return out;
 }
 
-void metaphone_impl(vef_context_t *ctx, vef_invalue_t *str,
-                    vef_invalue_t *max_len, vef_vdf_result_t *result) {
+void metaphone_impl(StringArg str, IntArg max_len, StringResult result) {
   try {
-    if (str->is_null || max_len->is_null) {
-      result->type = VEF_RESULT_NULL;
-      return;
-    }
-    long long ml = max_len->int_value;
-    if (ml <= 0) {
-      result->type = VEF_RESULT_ERROR;
-      snprintf(result->error_msg, VEF_MAX_ERROR_LEN,
-               "metaphone: max_output_length must be > 0");
-      return;
-    }
+    if (str.is_null() || max_len.is_null()) { result.set_null(); return; }
+    long long ml = max_len.value();
+    if (ml <= 0) { result.warning("metaphone: max_output_length must be > 0"); return; }
     if (ml > static_cast<long long>(INT_MAX)) {
-      result->type = VEF_RESULT_ERROR;
-      snprintf(result->error_msg, VEF_MAX_ERROR_LEN,
-               "metaphone: max_output_length must not exceed %d", INT_MAX);
+      char msg[128];
+      snprintf(msg, sizeof(msg), "metaphone: max_output_length must not exceed %d", INT_MAX);
+      result.warning(msg);
       return;
     }
-    std::string code =
-        compute_metaphone({str->str_value, str->str_len}, static_cast<int>(ml));
-    if (code.size() > result->max_str_len) {
-      result->type = VEF_RESULT_ERROR;
-      snprintf(result->error_msg, VEF_MAX_ERROR_LEN,
-               "metaphone: output buffer too small");
-      return;
-    }
-    std::memcpy(result->str_buf, code.data(), code.size());
-    result->actual_len = code.size();
-    result->type = VEF_RESULT_VALUE;
+    std::string code = compute_metaphone(str.value(), static_cast<int>(ml));
+    auto buf = result.buffer();
+    if (code.size() > buf.size()) { result.warning("metaphone: output buffer too small"); return; }
+    std::memcpy(buf.data(), code.data(), code.size());
+    result.set_length(code.size());
   } catch (...) {
-    result->type = VEF_RESULT_ERROR;
-    snprintf(result->error_msg, VEF_MAX_ERROR_LEN, "metaphone: internal error");
+    result.warning("metaphone: internal error");
   }
 }
 
@@ -962,53 +889,31 @@ static DMetaphoneResult compute_dmetaphone(std::string_view input) {
   return res;
 }
 
-void dmetaphone_impl(vef_context_t *ctx, vef_invalue_t *str,
-                     vef_vdf_result_t *result) {
+void dmetaphone_impl(StringArg str, StringResult result) {
   try {
-    if (str->is_null) {
-      result->type = VEF_RESULT_NULL;
-      return;
-    }
-    DMetaphoneResult r = compute_dmetaphone({str->str_value, str->str_len});
+    if (str.is_null()) { result.set_null(); return; }
+    DMetaphoneResult r = compute_dmetaphone(str.value());
     const std::string &code = r.primary;
-    if (code.size() > result->max_str_len) {
-      result->type = VEF_RESULT_ERROR;
-      snprintf(result->error_msg, VEF_MAX_ERROR_LEN,
-               "dmetaphone: output buffer too small");
-      return;
-    }
-    std::memcpy(result->str_buf, code.data(), code.size());
-    result->actual_len = code.size();
-    result->type = VEF_RESULT_VALUE;
+    auto buf = result.buffer();
+    if (code.size() > buf.size()) { result.warning("dmetaphone: output buffer too small"); return; }
+    std::memcpy(buf.data(), code.data(), code.size());
+    result.set_length(code.size());
   } catch (...) {
-    result->type = VEF_RESULT_ERROR;
-    snprintf(result->error_msg, VEF_MAX_ERROR_LEN, "dmetaphone: internal error");
+    result.warning("dmetaphone: internal error");
   }
 }
 
-void dmetaphone_alt_impl(vef_context_t *ctx, vef_invalue_t *str,
-                         vef_vdf_result_t *result) {
+void dmetaphone_alt_impl(StringArg str, StringResult result) {
   try {
-    if (str->is_null) {
-      result->type = VEF_RESULT_NULL;
-      return;
-    }
-    DMetaphoneResult r = compute_dmetaphone({str->str_value, str->str_len});
-    // If no alternate exists, return primary (PostgreSQL behaviour)
+    if (str.is_null()) { result.set_null(); return; }
+    DMetaphoneResult r = compute_dmetaphone(str.value());
     const std::string &code = r.alternate.empty() ? r.primary : r.alternate;
-    if (code.size() > result->max_str_len) {
-      result->type = VEF_RESULT_ERROR;
-      snprintf(result->error_msg, VEF_MAX_ERROR_LEN,
-               "dmetaphone_alt: output buffer too small");
-      return;
-    }
-    std::memcpy(result->str_buf, code.data(), code.size());
-    result->actual_len = code.size();
-    result->type = VEF_RESULT_VALUE;
+    auto buf = result.buffer();
+    if (code.size() > buf.size()) { result.warning("dmetaphone_alt: output buffer too small"); return; }
+    std::memcpy(buf.data(), code.data(), code.size());
+    result.set_length(code.size());
   } catch (...) {
-    result->type = VEF_RESULT_ERROR;
-    snprintf(result->error_msg, VEF_MAX_ERROR_LEN,
-             "dmetaphone_alt: internal error");
+    result.warning("dmetaphone_alt: internal error");
   }
 }
 
@@ -1017,7 +922,7 @@ void dmetaphone_alt_impl(vef_context_t *ctx, vef_invalue_t *str,
 // =============================================================================
 
 VEF_GENERATE_ENTRY_POINTS(
-    make_extension("vsql_fuzzystrmatch", "1.0.0")
+    make_extension()
         .func(make_func<&soundex_impl>("soundex")
                   .returns(STRING)
                   .param(STRING)

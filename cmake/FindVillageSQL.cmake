@@ -97,23 +97,19 @@ set(_villagesql_found FALSE)
 
 # Method 1: Use VillageSQL_BUILD_DIR for development builds
 if(VillageSQL_BUILD_DIR AND NOT _villagesql_found)
-  # Look for staged SDK in build directory
-  file(GLOB _sdk_dirs "${VillageSQL_BUILD_DIR}/villagesql-extension-sdk-*")
+  # Look for staged SDK directories; sort descending by name so the highest
+  # version number is selected (version is part of the directory name).
+  file(GLOB _sdk_dirs_all "${VillageSQL_BUILD_DIR}/villagesql-extension-sdk-*")
+  set(_sdk_dirs "")
+  foreach(_d IN LISTS _sdk_dirs_all)
+    if(IS_DIRECTORY "${_d}")
+      list(APPEND _sdk_dirs "${_d}")
+    endif()
+  endforeach()
+  unset(_sdk_dirs_all)
   if(_sdk_dirs)
-    # Select the SDK with the most recent modification time to avoid version
-    # mismatch when multiple SDK versions exist in the build directory.
-    set(_sdk_dir "")
-    set(_sdk_newest_ts "0")
-    foreach(_candidate IN LISTS _sdk_dirs)
-      file(TIMESTAMP "${_candidate}" _ts "%s" UTC)
-      if(_ts GREATER _sdk_newest_ts)
-        set(_sdk_newest_ts "${_ts}")
-        set(_sdk_dir "${_candidate}")
-      endif()
-    endforeach()
-    unset(_ts)
-    unset(_sdk_newest_ts)
-    unset(_candidate)
+    list(SORT _sdk_dirs ORDER DESCENDING)
+    list(GET _sdk_dirs 0 _sdk_dir)
     if(EXISTS "${_sdk_dir}/include/villagesql/extension.h")
       set(VillageSQL_PREFIX "${_sdk_dir}")
       set(VillageSQL_INCLUDE_DIR "${_sdk_dir}/include")
