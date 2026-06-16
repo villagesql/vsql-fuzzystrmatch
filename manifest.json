@@ -1,6 +1,6 @@
 {
   "name": "vsql_fuzzystrmatch",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "Fuzzy string matching functions: Soundex, Levenshtein, Metaphone, Double Metaphone",
   "author": "VillageSQL Contributors",
   "license": "GPL-2.0"
