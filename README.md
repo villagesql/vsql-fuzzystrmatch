@@ -193,7 +193,7 @@ To remove this limitation, VEF would need to support arity-based dispatch — re
 
 ## Reporting Bugs and Requesting Features
 
-Open an issue at [https://github.com/villagesql/villagesql-samples/issues](https://github.com/villagesql/villagesql-samples/issues). Include:
+Open an issue at [github.com/villagesql/vsql-fuzzystrmatch/issues](https://github.com/villagesql/vsql-fuzzystrmatch/issues). Include:
 
 - Title describing the behavior
 - Description with expected vs. actual output
@@ -203,8 +203,8 @@ Open an issue at [https://github.com/villagesql/villagesql-samples/issues](https
 ## Contact
 
 - [Discord](https://discord.gg/KSr6whd3Fr)
-- [GitHub Issues](https://github.com/villagesql/villagesql-samples/issues)
-- [GitHub Discussions](https://github.com/villagesql/villagesql-samples/discussions)
+- [GitHub Issues](https://github.com/villagesql/vsql-fuzzystrmatch/issues)
+- [GitHub Discussions](https://github.com/villagesql/vsql-fuzzystrmatch/discussions)
 
 ## License
 
