@@ -1,2 +1,6 @@
 build/
 *.veb
+
+# Local AGENTS files
+AGENTS.local.md
+.claude/
