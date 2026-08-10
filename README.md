@@ -110,6 +110,18 @@ SELECT vsql_fuzzystrmatch.dmetaphone(NULL);          -- NULL
 
 ## Installation
 
+If you installed VillageSQL with the install script, the Docker image, or a
+release tarball, `vsql_fuzzystrmatch.veb` is already in the server's `lib/veb/`
+directory — this extension is bundled with the server. There is nothing to build
+or download:
+
+```sql
+INSTALL EXTENSION vsql_fuzzystrmatch;
+```
+
+Build from source only if you built the server from source without the bundled
+extensions, or if you are working on this extension itself.
+
 Find your VEB directory:
 
 ```sql
