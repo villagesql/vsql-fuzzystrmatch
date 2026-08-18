@@ -2,6 +2,10 @@
 
 Port of PostgreSQL's [fuzzystrmatch](https://www.postgresql.org/docs/current/fuzzystrmatch.html) extension for VillageSQL. Provides Soundex, Levenshtein edit distance, Metaphone, and Double Metaphone functions for phonetic string comparison.
 
+**Docs:** [VillageSQL documentation](https://villagesql.com/docs) ·
+[Fuzzy string matching](https://villagesql.com/docs/guides/fuzzy-string-matching) ·
+[Install VillageSQL Server](https://villagesql.com/install)
+
 ## Functions
 
 ### Soundex
