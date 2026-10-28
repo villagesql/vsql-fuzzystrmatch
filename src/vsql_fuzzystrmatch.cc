@@ -458,7 +458,15 @@ void metaphone_impl(StringArg str, IntArg max_len, StringResult result) {
     }
     std::string code = compute_metaphone(str.value(), static_cast<int>(ml));
     auto buf = result.buffer();
-    if (code.size() > buf.size()) { result.warning("metaphone: output buffer too small"); return; }
+    if (code.size() > buf.size()) {
+      // Report the true (unclamped) length so the server's dispatcher grows
+      // the buffer and retries once with enough room; only copy the prefix
+      // that fits this time, since the server does not read it on the
+      // overflowing attempt.
+      std::memcpy(buf.data(), code.data(), buf.size());
+      result.set_length(code.size());
+      return;
+    }
     std::memcpy(buf.data(), code.data(), code.size());
     result.set_length(code.size());
   } catch (...) {

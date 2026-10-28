@@ -74,7 +74,7 @@ This overwrites the `.result` files in `mysql-test/r/` with actual server output
 |---|---|
 | `t/soundex.test` | `soundex`, `difference`; basic cases, NULL handling |
 | `t/levenshtein.test` | `levenshtein`, `levenshtein_cost`, `levenshtein_less_equal`, `levenshtein_less_equal_cost`; basic cases, early-exit semantics, negative cost error, NULL handling |
-| `t/metaphone.test` | `metaphone`; basic cases, truncation, NULL handling |
+| `t/metaphone.test` | `metaphone`; basic cases, truncation, NULL handling, result-buffer growth on long output |
 | `t/dmetaphone.test` | `dmetaphone`, `dmetaphone_alt`; primary vs. alternate codes, NULL handling |
 
 Each test file installs the extension at the top and uninstalls at the bottom, so tests are isolated and can run in any order.

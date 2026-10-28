@@ -39,7 +39,7 @@ The build:
 **Core Components:**
 - `src/vsql_fuzzystrmatch.cc` — all function implementations and VDF registration in one file
 - `cmake/FindVillageSQL.cmake` — SDK discovery module
-- `manifest.json` — extension metadata (`vsql_fuzzystrmatch`, version `0.0.1`)
+- `manifest.json` — extension metadata: the install name and the version
 - `mysql-test/t/` — MTR test files
 - `mysql-test/r/` — expected MTR results
 
