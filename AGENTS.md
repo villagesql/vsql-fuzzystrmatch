@@ -68,7 +68,7 @@ All functions return NULL if any argument is NULL. Input strings for Levenshtein
 
 ## VEF API
 
-Uses Protocol V3 (`#include <villagesql/vsql.h>`, `using namespace vsql`). Typed wrappers:
+Uses Protocol V5 (`#include <villagesql/vsql.h>`, `using namespace vsql`). Typed wrappers:
 - `StringArg` / `StringResult` for string parameters and return values
 - `IntArg` / `IntResult` for integer parameters and return values
 - `out.set_null()` for NULL results

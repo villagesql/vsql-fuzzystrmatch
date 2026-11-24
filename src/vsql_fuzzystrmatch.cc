@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <cctype>
 #include <climits>
+#include <cstdint>
 #include <cstring>
 #include <string>
 #include <string_view>
@@ -126,12 +127,65 @@ void difference_impl(StringArg a, StringArg b, IntResult result) {
 // Levenshtein helpers
 // =============================================================================
 
-// Maximum string length accepted (PostgreSQL compatibility limit)
+// Maximum string length in characters (PostgreSQL compatibility limit)
 static constexpr size_t kLevenshteinMaxLen = 255;
+
+// An argument decoded from UTF-8 into one code point per character.
+struct LevChars {
+  char32_t buf[kLevenshteinMaxLen];
+  size_t len = 0;
+  std::u32string_view view() const { return {buf, len}; }
+};
+
+// Decodes s as UTF-8. A byte that does not start a valid sequence counts as
+// one character of its own, mapped above U+10FFFF so it never equals a real
+// code point. Returns false when s holds more than kLevenshteinMaxLen
+// characters.
+static bool utf8_decode(std::string_view s, LevChars &out) {
+  const auto *p = reinterpret_cast<const unsigned char *>(s.data());
+  size_t n = s.size(), i = 0;
+  out.len = 0;
+  while (i < n) {
+    if (out.len == kLevenshteinMaxLen) return false;
+    unsigned char b = p[i];
+    size_t extra = 0;
+    char32_t cp = 0;
+    unsigned char lo = 0x80, hi = 0xBF;  // valid range of the second byte
+    if (b < 0x80) {
+      cp = b;
+    } else if (b >= 0xC2 && b <= 0xDF) {
+      extra = 1; cp = b & 0x1F;
+    } else if (b >= 0xE0 && b <= 0xEF) {
+      extra = 2; cp = b & 0x0F;
+      if (b == 0xE0) lo = 0xA0;  // overlong
+      if (b == 0xED) hi = 0x9F;  // surrogates
+    } else if (b >= 0xF0 && b <= 0xF4) {
+      extra = 3; cp = b & 0x07;
+      if (b == 0xF0) lo = 0x90;  // overlong
+      if (b == 0xF4) hi = 0x8F;  // above U+10FFFF
+    } else {
+      extra = SIZE_MAX;
+    }
+    bool ok = extra != SIZE_MAX && extra < n - i;
+    for (size_t k = 1; ok && k <= extra; ++k) {
+      unsigned char c = p[i + k];
+      if (c < (k == 1 ? lo : 0x80) || c > (k == 1 ? hi : 0xBF)) ok = false;
+      cp = (cp << 6) | (c & 0x3F);
+    }
+    if (ok) {
+      out.buf[out.len++] = cp;
+      i += extra + 1;
+    } else {
+      out.buf[out.len++] = 0x110000 + b;
+      ++i;
+    }
+  }
+  return true;
+}
 
 // Core DP with custom costs and optional early-exit at imax.
 // Returns -1 if distance exceeds imax (when imax >= 0).
-static long long levenshtein_dp(std::string_view src, std::string_view tgt,
+static long long levenshtein_dp(std::u32string_view src, std::u32string_view tgt,
                                 long long ins_cost, long long del_cost,
                                 long long sub_cost, long long imax) {
   // Ensure src is the shorter string to minimise memory
@@ -168,11 +222,12 @@ static long long levenshtein_dp(std::string_view src, std::string_view tgt,
   return prev[m];
 }
 
-static bool check_lev_len(std::string_view sa, std::string_view sb,
-                           const char *fn, IntResult &result) {
-  if (sa.size() > kLevenshteinMaxLen || sb.size() > kLevenshteinMaxLen) {
+static bool decode_lev_args(std::string_view sa, std::string_view sb,
+                            LevChars &ca, LevChars &cb, const char *fn,
+                            IntResult &result) {
+  if (!utf8_decode(sa, ca) || !utf8_decode(sb, cb)) {
     char msg[256];
-    snprintf(msg, sizeof(msg), "%s: argument exceeds maximum length of %zu",
+    snprintf(msg, sizeof(msg), "%s: argument exceeds maximum length of %zu characters",
              fn, kLevenshteinMaxLen);
     result.warning(msg);
     return false;
@@ -187,9 +242,10 @@ static bool check_lev_len(std::string_view sa, std::string_view sb,
 void levenshtein_impl(StringArg a, StringArg b, IntResult result) {
   try {
     if (a.is_null() || b.is_null()) { result.set_null(); return; }
-    std::string_view sa = a.value(), sb = b.value();
-    if (!check_lev_len(sa, sb, "levenshtein", result)) return;
-    result.set(levenshtein_dp(sa, sb, 1, 1, 1, -1));
+    LevChars ca, cb;
+    if (!decode_lev_args(a.value(), b.value(), ca, cb, "levenshtein", result))
+      return;
+    result.set(levenshtein_dp(ca.view(), cb.view(), 1, 1, 1, -1));
   } catch (...) {
     result.warning("levenshtein: internal error");
   }
@@ -215,9 +271,11 @@ void levenshtein_cost_impl(StringArg a, StringArg b, IntArg ins, IntArg del,
       result.warning(msg);
       return;
     }
-    std::string_view sa = a.value(), sb = b.value();
-    if (!check_lev_len(sa, sb, "levenshtein_cost", result)) return;
-    result.set(levenshtein_dp(sa, sb, ic, dc, sc, -1));
+    LevChars ca, cb;
+    if (!decode_lev_args(a.value(), b.value(), ca, cb, "levenshtein_cost",
+                         result))
+      return;
+    result.set(levenshtein_dp(ca.view(), cb.view(), ic, dc, sc, -1));
   } catch (...) {
     result.warning("levenshtein_cost: internal error");
   }
@@ -236,9 +294,11 @@ void levenshtein_less_equal_impl(StringArg a, StringArg b, IntArg imax,
       result.warning("levenshtein_less_equal: max_d must be non-negative");
       return;
     }
-    std::string_view sa = a.value(), sb = b.value();
-    if (!check_lev_len(sa, sb, "levenshtein_less_equal", result)) return;
-    long long d = levenshtein_dp(sa, sb, 1, 1, 1, max_d);
+    LevChars ca, cb;
+    if (!decode_lev_args(a.value(), b.value(), ca, cb,
+                         "levenshtein_less_equal", result))
+      return;
+    long long d = levenshtein_dp(ca.view(), cb.view(), 1, 1, 1, max_d);
     result.set((d < 0) ? (max_d < LLONG_MAX ? max_d + 1 : max_d) : d);
   } catch (...) {
     result.warning("levenshtein_less_equal: internal error");
@@ -272,9 +332,11 @@ void levenshtein_less_equal_cost_impl(StringArg a, StringArg b, IntArg ins,
       result.warning("levenshtein_less_equal_cost: max_d must be non-negative");
       return;
     }
-    std::string_view sa = a.value(), sb = b.value();
-    if (!check_lev_len(sa, sb, "levenshtein_less_equal_cost", result)) return;
-    long long d = levenshtein_dp(sa, sb, ic, dc, sc, max_d);
+    LevChars ca, cb;
+    if (!decode_lev_args(a.value(), b.value(), ca, cb,
+                         "levenshtein_less_equal_cost", result))
+      return;
+    long long d = levenshtein_dp(ca.view(), cb.view(), ic, dc, sc, max_d);
     result.set((d < 0) ? (max_d < LLONG_MAX ? max_d + 1 : max_d) : d);
   } catch (...) {
     result.warning("levenshtein_less_equal_cost: internal error");
@@ -933,6 +995,7 @@ VEF_GENERATE_ENTRY_POINTS(
     make_extension()
         .func(make_func<&soundex_impl>("soundex")
                   .returns(STRING)
+                  .max_result_length(4)
                   .param(STRING)
                   .buffer_size(4)
                   .deterministic()
@@ -978,6 +1041,16 @@ VEF_GENERATE_ENTRY_POINTS(
                   .build())
         .func(make_func<&metaphone_impl>("metaphone")
                   .returns(STRING)
+                  // max_output_length is caller-supplied (up to INT_MAX) and
+                  // the code can be up to twice the input's length (e.g. 'X'
+                  // -> "KS"), so no fixed cap short of the server's own
+                  // ceiling actually bounds it. Declaring the same ceiling
+                  // here (rather than guessing a "typical" value) means a
+                  // materialized result (CREATE TABLE AS SELECT, a view, a
+                  // temp table) is sized to hold whatever metaphone() can
+                  // really produce, instead of the pre-max_result_length
+                  // default of just the STRING argument's own width.
+                  .max_result_length(VEF_MAX_RESULT_LENGTH)
                   .param(STRING)
                   .param(INT)
                   .buffer_size(64)
@@ -985,12 +1058,14 @@ VEF_GENERATE_ENTRY_POINTS(
                   .build())
         .func(make_func<&dmetaphone_impl>("dmetaphone")
                   .returns(STRING)
+                  .max_result_length(kDMetaphoneMaxLen)
                   .param(STRING)
                   .buffer_size(7)
                   .deterministic()
                   .build())
         .func(make_func<&dmetaphone_alt_impl>("dmetaphone_alt")
                   .returns(STRING)
+                  .max_result_length(kDMetaphoneMaxLen)
                   .param(STRING)
                   .buffer_size(7)
                   .deterministic()

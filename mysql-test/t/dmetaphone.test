@@ -12,4 +12,18 @@ SELECT vsql_fuzzystrmatch.dmetaphone_alt('Schmidt');
 SELECT vsql_fuzzystrmatch.dmetaphone(NULL);
 SELECT vsql_fuzzystrmatch.dmetaphone_alt(NULL);
 
+--echo # dmetaphone and dmetaphone_alt materialized from a column narrower
+--echo # than the code ('AX' -> 'AKS')
+CREATE TABLE fz_src (s VARCHAR(2) CHARACTER SET latin1 NOT NULL);
+INSERT INTO fz_src VALUES ('AX');
+CREATE TABLE fz_primary AS
+  SELECT vsql_fuzzystrmatch.dmetaphone(s) AS p FROM fz_src;
+SHOW CREATE TABLE fz_primary;
+SELECT p FROM fz_primary;
+CREATE TABLE fz_alternate AS
+  SELECT vsql_fuzzystrmatch.dmetaphone_alt(s) AS a FROM fz_src;
+SHOW CREATE TABLE fz_alternate;
+SELECT a FROM fz_alternate;
+DROP TABLE fz_primary, fz_alternate, fz_src;
+
 UNINSTALL EXTENSION vsql_fuzzystrmatch;

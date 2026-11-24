@@ -41,4 +41,18 @@ vsql_fuzzystrmatch.difference('Robert', 'Sylvia')
 SELECT vsql_fuzzystrmatch.difference(NULL, 'Ann');
 vsql_fuzzystrmatch.difference(NULL, 'Ann')
 NULL
+# soundex materialized from a column narrower than its 4-character code
+CREATE TABLE fz_src (s VARCHAR(1) CHARACTER SET latin1 NOT NULL);
+INSERT INTO fz_src VALUES ('A');
+CREATE TABLE fz_materialized AS
+SELECT vsql_fuzzystrmatch.soundex(s) AS c FROM fz_src;
+SHOW CREATE TABLE fz_materialized;
+Table	Create Table
+fz_materialized	CREATE TABLE `fz_materialized` (
+  `c` varchar(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+SELECT c FROM fz_materialized;
+c
+A000
+DROP TABLE fz_materialized, fz_src;
 UNINSTALL EXTENSION vsql_fuzzystrmatch;

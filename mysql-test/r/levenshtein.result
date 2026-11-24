@@ -43,4 +43,42 @@ vsql_fuzzystrmatch.levenshtein_cost('abc', 'xyz', -1, 1, 1)
 NULL
 Warnings:
 Warning	3200	VDF error in function 'levenshtein_cost': levenshtein_cost: costs must be non-negative
+# multibyte UTF-8 counts characters, not bytes
+SELECT vsql_fuzzystrmatch.levenshtein('café', 'cafe');
+vsql_fuzzystrmatch.levenshtein('café', 'cafe')
+1
+SELECT vsql_fuzzystrmatch.levenshtein('日本', '日本語');
+vsql_fuzzystrmatch.levenshtein('日本', '日本語')
+1
+SELECT vsql_fuzzystrmatch.levenshtein_cost('café', 'cafe', 1, 1, 10);
+vsql_fuzzystrmatch.levenshtein_cost('café', 'cafe', 1, 1, 10)
+2
+SELECT vsql_fuzzystrmatch.levenshtein_cost('日本', '日本語', 2, 1, 1);
+vsql_fuzzystrmatch.levenshtein_cost('日本', '日本語', 2, 1, 1)
+2
+SELECT vsql_fuzzystrmatch.levenshtein_less_equal('日本', '日本語', 1);
+vsql_fuzzystrmatch.levenshtein_less_equal('日本', '日本語', 1)
+1
+SELECT vsql_fuzzystrmatch.levenshtein_less_equal_cost('café', 'cafe', 1, 1, 10, 5);
+vsql_fuzzystrmatch.levenshtein_less_equal_cost('café', 'cafe', 1, 1, 10, 5)
+2
+# length limit is 255 characters
+SELECT vsql_fuzzystrmatch.levenshtein(REPEAT('é', 255), 'e');
+vsql_fuzzystrmatch.levenshtein(REPEAT('é', 255), 'e')
+255
+SELECT vsql_fuzzystrmatch.levenshtein(REPEAT('é', 256), 'e');
+vsql_fuzzystrmatch.levenshtein(REPEAT('é', 256), 'e')
+NULL
+Warnings:
+Warning	3200	VDF error in function 'levenshtein': levenshtein: argument exceeds maximum length of 255 characters
+SELECT vsql_fuzzystrmatch.levenshtein_less_equal('e', REPEAT('日', 256), 3);
+vsql_fuzzystrmatch.levenshtein_less_equal('e', REPEAT('日', 256), 3)
+NULL
+Warnings:
+Warning	3200	VDF error in function 'levenshtein_less_equal': levenshtein_less_equal: argument exceeds maximum length of 255 characters
+# malformed UTF-8 is refused before the function runs
+SELECT vsql_fuzzystrmatch.levenshtein(X'C3', 'a');
+ERROR HY000: Cannot convert string '\xC3' from binary to utf8mb4
+SELECT vsql_fuzzystrmatch.levenshtein(CONCAT('ab', X'F09F98'), 'ab');
+ERROR HY000: Cannot convert string 'ab\xF0\x9F\x98' from binary to utf8mb4
 UNINSTALL EXTENSION vsql_fuzzystrmatch;

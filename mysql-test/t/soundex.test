@@ -24,4 +24,13 @@ SELECT vsql_fuzzystrmatch.difference('Robert', 'Sylvia');
 --echo # difference NULL
 SELECT vsql_fuzzystrmatch.difference(NULL, 'Ann');
 
+--echo # soundex materialized from a column narrower than its 4-character code
+CREATE TABLE fz_src (s VARCHAR(1) CHARACTER SET latin1 NOT NULL);
+INSERT INTO fz_src VALUES ('A');
+CREATE TABLE fz_materialized AS
+  SELECT vsql_fuzzystrmatch.soundex(s) AS c FROM fz_src;
+SHOW CREATE TABLE fz_materialized;
+SELECT c FROM fz_materialized;
+DROP TABLE fz_materialized, fz_src;
+
 UNINSTALL EXTENSION vsql_fuzzystrmatch;

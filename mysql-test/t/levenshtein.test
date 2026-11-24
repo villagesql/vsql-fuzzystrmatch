@@ -24,4 +24,23 @@ SELECT vsql_fuzzystrmatch.levenshtein_less_equal_cost('abc', 'xyz', 1, 1, 1, 2);
 --echo # negative cost returns NULL with warning
 SELECT vsql_fuzzystrmatch.levenshtein_cost('abc', 'xyz', -1, 1, 1);
 
+--echo # multibyte UTF-8 counts characters, not bytes
+SELECT vsql_fuzzystrmatch.levenshtein('café', 'cafe');
+SELECT vsql_fuzzystrmatch.levenshtein('日本', '日本語');
+SELECT vsql_fuzzystrmatch.levenshtein_cost('café', 'cafe', 1, 1, 10);
+SELECT vsql_fuzzystrmatch.levenshtein_cost('日本', '日本語', 2, 1, 1);
+SELECT vsql_fuzzystrmatch.levenshtein_less_equal('日本', '日本語', 1);
+SELECT vsql_fuzzystrmatch.levenshtein_less_equal_cost('café', 'cafe', 1, 1, 10, 5);
+
+--echo # length limit is 255 characters
+SELECT vsql_fuzzystrmatch.levenshtein(REPEAT('é', 255), 'e');
+SELECT vsql_fuzzystrmatch.levenshtein(REPEAT('é', 256), 'e');
+SELECT vsql_fuzzystrmatch.levenshtein_less_equal('e', REPEAT('日', 256), 3);
+
+--echo # malformed UTF-8 is refused before the function runs
+--error 3854
+SELECT vsql_fuzzystrmatch.levenshtein(X'C3', 'a');
+--error 3854
+SELECT vsql_fuzzystrmatch.levenshtein(CONCAT('ab', X'F09F98'), 'ab');
+
 UNINSTALL EXTENSION vsql_fuzzystrmatch;

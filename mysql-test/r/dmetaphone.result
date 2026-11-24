@@ -20,4 +20,29 @@ NULL
 SELECT vsql_fuzzystrmatch.dmetaphone_alt(NULL);
 vsql_fuzzystrmatch.dmetaphone_alt(NULL)
 NULL
+# dmetaphone and dmetaphone_alt materialized from a column narrower
+# than the code ('AX' -> 'AKS')
+CREATE TABLE fz_src (s VARCHAR(2) CHARACTER SET latin1 NOT NULL);
+INSERT INTO fz_src VALUES ('AX');
+CREATE TABLE fz_primary AS
+SELECT vsql_fuzzystrmatch.dmetaphone(s) AS p FROM fz_src;
+SHOW CREATE TABLE fz_primary;
+Table	Create Table
+fz_primary	CREATE TABLE `fz_primary` (
+  `p` varchar(6) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+SELECT p FROM fz_primary;
+p
+AKS
+CREATE TABLE fz_alternate AS
+SELECT vsql_fuzzystrmatch.dmetaphone_alt(s) AS a FROM fz_src;
+SHOW CREATE TABLE fz_alternate;
+Table	Create Table
+fz_alternate	CREATE TABLE `fz_alternate` (
+  `a` varchar(6) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+SELECT a FROM fz_alternate;
+a
+AKS
+DROP TABLE fz_primary, fz_alternate, fz_src;
 UNINSTALL EXTENSION vsql_fuzzystrmatch;
