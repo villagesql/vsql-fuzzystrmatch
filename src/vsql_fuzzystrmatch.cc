@@ -198,7 +198,10 @@ static long long levenshtein_dp(std::u32string_view src, std::u32string_view tgt
   size_t n = tgt.size();
 
   if (src == tgt) return 0;
-  if (m == 0) return static_cast<long long>(n) * ins_cost;
+  if (m == 0) {
+    long long d = static_cast<long long>(n) * ins_cost;
+    return (imax >= 0 && d > imax) ? -1 : d;
+  }
 
   long long prev_arr[kLevenshteinMaxLen + 1];
   long long curr_arr[kLevenshteinMaxLen + 1];
@@ -219,7 +222,7 @@ static long long levenshtein_dp(std::u32string_view src, std::u32string_view tgt
     if (imax >= 0 && row_min > imax) return -1;
     std::swap(prev, cur);
   }
-  return prev[m];
+  return (imax >= 0 && prev[m] > imax) ? -1 : prev[m];
 }
 
 static bool decode_lev_args(std::string_view sa, std::string_view sb,

@@ -30,6 +30,15 @@ vsql_fuzzystrmatch.levenshtein_less_equal('kitten', 'sitting', 5)
 SELECT vsql_fuzzystrmatch.levenshtein_less_equal('kitten', 'sitting', 2);
 vsql_fuzzystrmatch.levenshtein_less_equal('kitten', 'sitting', 2)
 3
+SELECT vsql_fuzzystrmatch.levenshtein_less_equal('', 'abcdef', 2);
+vsql_fuzzystrmatch.levenshtein_less_equal('', 'abcdef', 2)
+3
+SELECT vsql_fuzzystrmatch.levenshtein_less_equal('abcdef', '', 2);
+vsql_fuzzystrmatch.levenshtein_less_equal('abcdef', '', 2)
+3
+SELECT vsql_fuzzystrmatch.levenshtein_less_equal('', 'abcdef', 0);
+vsql_fuzzystrmatch.levenshtein_less_equal('', 'abcdef', 0)
+1
 # levenshtein_less_equal_cost
 SELECT vsql_fuzzystrmatch.levenshtein_less_equal_cost('abc', 'xyz', 1, 1, 1, 5);
 vsql_fuzzystrmatch.levenshtein_less_equal_cost('abc', 'xyz', 1, 1, 1, 5)
@@ -37,6 +46,9 @@ vsql_fuzzystrmatch.levenshtein_less_equal_cost('abc', 'xyz', 1, 1, 1, 5)
 SELECT vsql_fuzzystrmatch.levenshtein_less_equal_cost('abc', 'xyz', 1, 1, 1, 2);
 vsql_fuzzystrmatch.levenshtein_less_equal_cost('abc', 'xyz', 1, 1, 1, 2)
 3
+SELECT vsql_fuzzystrmatch.levenshtein_less_equal_cost('aXXXX', 'aYYYY', 1, 10, 10, 5);
+vsql_fuzzystrmatch.levenshtein_less_equal_cost('aXXXX', 'aYYYY', 1, 10, 10, 5)
+6
 # negative cost returns NULL with warning
 SELECT vsql_fuzzystrmatch.levenshtein_cost('abc', 'xyz', -1, 1, 1);
 vsql_fuzzystrmatch.levenshtein_cost('abc', 'xyz', -1, 1, 1)
